@@ -5,6 +5,15 @@ const TaskSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
+  user:{
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: true
+  },
+ username:{
+type: String,
+required: true
+  },
  
 });
 const TaskModel = mongoose.model("tasks", TaskSchema);

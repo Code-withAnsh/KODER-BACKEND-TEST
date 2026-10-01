@@ -1,4 +1,5 @@
 import TaskModel from "../Models/Task.model.js";
+import mongoose from "mongoose";
 
 async function createTask(req, res) {
   try {
@@ -12,7 +13,11 @@ async function createTask(req, res) {
 
     const task = await TaskModel.create({
       title,
+      user: req.user.id,
+      username: req.user.username,
     });
+
+    await task.populate("user", "username email");
 
     return res.status(201).json({
       message: "task created successfully",
@@ -27,9 +32,12 @@ async function createTask(req, res) {
 }
 async function getAllTasks(req, res) {
   try {
-    const tasks = await TaskModel.find();
+    const tasks = await TaskModel.find({ user: req.user }).populate(
+      "user",
+      "username email"
+    );
     return res.status(200).json({
-      message: "tasks fetched succesfully",
+      message: "tasks fetched successfully",
       tasks,
     });
   } catch (error) {
@@ -40,17 +48,28 @@ async function getAllTasks(req, res) {
   }
 }
 // lets delete the task
+
 async function deleteTask(req, res) {
   try {
     const { id } = req.params;
 
-    const deletedTask = await TaskModel.findByIdAndDelete(id);
+    const task = await TaskModel.findById(id);
+    //task have user id and req.user is the user id of the logged in user, we need to check if they are same or not
+    // if they are not same then we need to return 403 forbidden
 
-    if (!deletedTask) {
+    if (!task) {
       return res.status(404).json({
         message: "task not found",
       });
     }
+
+if(task.user?.toString() !== req.user.id){
+  return res.status(403).json({
+    message: "only the task creator can delete this task",
+  });
+}
+
+    const deletedTask = await TaskModel.findByIdAndDelete(id);
 
     return res.status(200).json({
       message: "task deleted successfully",
@@ -79,13 +98,20 @@ async function updateTask(req, res) {
       { title },
       { new: true }
     );
-
-    if (!updatedTask) {
+    const task = await TaskModel.findById(id);
+    if (!task) {
       return res.status(404).json({
         message: "task not found",
       });
     }
 
+    if (task.user?.toString() !== req.user.id) {
+      return res.status(403).json({
+        message: "only the task creator can update this task",
+      });
+    }
+
+  
     return res.status(200).json({
       message: "task updated successfully",
       task: updatedTask,
@@ -100,14 +126,28 @@ async function updateTask(req, res) {
 async function getTaskById(req, res) {
   try {
     const { id } = req.params;
-    
+
+    if (!mongoose.isValidObjectId(id)) {
+      return res.status(400).json({
+        message: "invalid task id",
+      });
+    }
+
     const task = await TaskModel.findById(id);
+
 
     if (!task) {
       return res.status(404).json({
         message: "task not found",
       });
     }
+    if (task.user?.toString() !== req.user.id) {
+      return res.status(403).json({
+        message: "only the task creator can view this task",
+      });
+    }
+
+    await task.populate("user", "username email");
 
     return res.status(200).json({
       message: "task fetched successfully",
@@ -122,8 +162,3 @@ async function getTaskById(req, res) {
 }   
 
 export default { createTask, getAllTasks, deleteTask, updateTask, getTaskById };
-
-
-
-
-

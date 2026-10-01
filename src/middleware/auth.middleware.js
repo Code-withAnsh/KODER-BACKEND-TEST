@@ -10,7 +10,8 @@ function requireAuth(req, res, next) {
   }
 
   try {
-    req.user = jwt.verify(token, process.env.JWT_SECRET);
+    let verify = jwt.verify(token, process.env.JWT_SECRET);
+    req.user = verify;
     next();
   } catch (error) {
     return res.status(401).json({
